@@ -9,3 +9,6 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[functions.___netlify-server-handler]
+  max_request_size_bytes = 26214400  # 25MB

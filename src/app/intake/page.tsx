@@ -39,8 +39,12 @@ export default function IntakePage() {
       const res = await fetch('/api/patients', { method: 'POST', body: formData })
 
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error ?? 'Submission failed')
+        let errorMsg = 'Submission failed. Please try again.'
+        try {
+          const data = await res.json()
+          if (data.error) errorMsg = data.error
+        } catch { /* non-JSON response from server */ }
+        throw new Error(errorMsg)
       }
 
       setStep('thank-you')
