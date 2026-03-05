@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Build the form link
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
     const formUrl = `${baseUrl}/form/${patientId}`
 
     // Update patient: set forms_to_send + status

@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # NEXT_PUBLIC_* vars are intentionally embedded in client bundles by Next.js
+  # Omit them from secrets scanning to prevent false positives
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,NEXT_PUBLIC_BASE_URL"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
