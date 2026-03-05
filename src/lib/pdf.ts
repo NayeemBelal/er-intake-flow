@@ -1,4 +1,4 @@
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, StandardFonts } from 'pdf-lib'
 
 export async function loadAndFillPdf(
   formName: string,
@@ -40,6 +40,8 @@ export async function loadAndFillPdf(
       }
     }
 
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    form.updateFieldAppearances(font)
     form.flatten()
     return await pdfDoc.save()
   } catch {
