@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { PDFDocument, StandardFonts, PDFTextField, PDFCheckBox } from 'pdf-lib'
 
 export async function loadAndFillPdf(
   formName: string,
@@ -17,11 +17,10 @@ export async function loadAndFillPdf(
       if (!value) continue
       try {
         const field = form.getField(fieldName)
-        const type = field.constructor.name
-        if (type === 'PDFTextField') {
-          form.getTextField(fieldName).setText(value)
-        } else if (type === 'PDFCheckBox' && value === 'true') {
-          form.getCheckBox(fieldName).check()
+        if (field instanceof PDFTextField) {
+          field.setText(value)
+        } else if (field instanceof PDFCheckBox && value === 'true') {
+          field.check()
         }
       } catch {
         // Field doesn't exist in this PDF — skip
