@@ -1,65 +1,127 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState, useEffect, useCallback } from 'react'
+import { format } from 'date-fns'
+import { Clock, Users, FileText, CheckCircle2, Hourglass } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import Sidebar from '@/components/dashboard/Sidebar'
+import PatientQueue from '@/components/dashboard/PatientQueue'
+import PatientSlideOver from '@/components/dashboard/PatientSlideOver'
+import type { Patient, PatientStatus } from '@/types/patient'
+
+const STAT_CARDS: {
+  label: string
+  status: PatientStatus | 'all'
+  icon: React.ElementType
+  color: string
+  bg: string
+  border: string
+}[] = [
+  { label: 'Total Today', status: 'all', icon: Users, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
+  { label: 'Waiting', status: 'waiting_for_forms', icon: Hourglass, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
+  { label: 'Filling Forms', status: 'filling_forms', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
+  { label: 'Submitted', status: 'submitted', icon: Clock, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
+  { label: 'Audited', status: 'audited', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+]
+
+export default function DashboardPage() {
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [now, setNow] = useState(new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      const { data } = await supabase
+        .from('patients')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (data) setPatients(data as Patient[])
+    }
+    fetchPatients()
+  }, [])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('patients-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'patients' }, (payload) => {
+        setPatients((prev) => [payload.new as Patient, ...prev])
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'patients' }, (payload) => {
+        const updated = payload.new as Patient
+        setPatients((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+        setSelectedPatient((prev) => (prev?.id === updated.id ? updated : prev))
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  const handleSelectPatient = useCallback((patient: Patient) => {
+    setSelectedPatient((prev) => (prev?.id === patient.id ? null : patient))
+  }, [])
+
+  const handleCloseSlideOver = useCallback(() => setSelectedPatient(null), [])
+
+  const getCount = (status: PatientStatus | 'all') =>
+    status === 'all' ? patients.length : patients.filter((p) => p.status === status).length
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex min-h-screen" style={{ backgroundColor: '#F1F5F9', fontFamily: 'var(--font-geist)' }}>
+      {/* Sidebar */}
+      <Sidebar patients={patients} />
+
+      {/* Main */}
+      <main className="flex-1 ml-64 flex flex-col min-h-screen">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 bg-white/60 backdrop-blur-sm sticky top-0 z-30">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Today&apos;s Queue</h1>
+            <p className="text-slate-500 text-sm mt-0.5">{format(now, 'EEEE, MMMM d, yyyy')}</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Content */}
+        <div className="flex-1 px-8 py-6 space-y-6">
+          {/* Stat cards */}
+          <div className="grid grid-cols-5 gap-4">
+            {STAT_CARDS.map(({ label, status, icon: Icon, color, bg, border }) => (
+              <div
+                key={status}
+                className={`rounded-2xl border ${border} ${bg} px-5 py-4`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-slate-500">{label}</span>
+                  <div className={`w-8 h-8 rounded-lg bg-white/60 flex items-center justify-center ${color}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                </div>
+                <p
+                  className={`text-3xl font-bold tabular-nums ${color}`}
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono)' }}
+                >
+                  {getCount(status)}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Patient table */}
+          <PatientQueue
+            patients={patients}
+            selectedId={selectedPatient?.id ?? null}
+            onSelect={handleSelectPatient}
+            now={now}
+          />
         </div>
       </main>
+
+      {/* Slide-over */}
+      <PatientSlideOver patient={selectedPatient} onClose={handleCloseSlideOver} />
     </div>
-  );
+  )
 }
