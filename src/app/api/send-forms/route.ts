@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
       if (telnyxApiKey && telnyxFrom && patient.phone) {
         const Telnyx = (await import('telnyx')).default
-        const client = new Telnyx(telnyxApiKey)
+        const client = new Telnyx({ apiKey: telnyxApiKey })
         const digits = patient.phone.replace(/\D/g, '')
         const toNumber = digits.startsWith('1') ? `+${digits}` : `+1${digits}`
         await client.messages.send({
