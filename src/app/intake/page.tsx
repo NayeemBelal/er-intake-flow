@@ -29,10 +29,11 @@ export default function IntakePage() {
 
     try {
       const formData = new FormData()
-      formData.append('name', basicInfo.name)
+      formData.append('name', `${basicInfo.firstName} ${basicInfo.lastName}`.trim())
       formData.append('dob', basicInfo.dob)
       formData.append('phone', basicInfo.phone)
       formData.append('reason', basicInfo.reason)
+      if (basicInfo.howDidYouHear) formData.append('how_did_you_hear', basicInfo.howDidYouHear)
       if (idPhoto) formData.append('id_photo', idPhoto)
       if (insurancePhoto) formData.append('insurance_photo', insurancePhoto)
 

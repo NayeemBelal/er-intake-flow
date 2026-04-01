@@ -264,7 +264,10 @@ export function PdfFormFiller({
     exportValue: string,
     left: number, top: number, width: number, height: number,
   ) {
-    const isChecked = formDataRef.current[fieldName] === exportValue
+    // Accept both the PDF's native exportValue AND the string 'true' that we
+    // store when filling programmatically via expandRadioValues / loadAndFillPdf.
+    const stored = formDataRef.current[fieldName]
+    const isChecked = stored === exportValue || stored === 'true'
 
     const box = document.createElement('div')
 
@@ -300,9 +303,11 @@ export function PdfFormFiller({
     }
 
     box.onclick = () => {
-      const nowChecked = formDataRef.current[fieldName] !== exportValue
-      formDataRef.current[fieldName] = nowChecked ? exportValue : ''
-      onChangeRef.current(fieldName, nowChecked ? exportValue : '')
+      const currentlyChecked = formDataRef.current[fieldName] === exportValue || formDataRef.current[fieldName] === 'true'
+      const nowChecked = !currentlyChecked
+      // Always store 'true' — consistent with loadAndFillPdf's check() trigger
+      formDataRef.current[fieldName] = nowChecked ? 'true' : ''
+      onChangeRef.current(fieldName, nowChecked ? 'true' : '')
       applyState(nowChecked)
     }
 

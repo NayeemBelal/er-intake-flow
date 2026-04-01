@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { SMS_PROVIDER } from '@/lib/sms-config'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,24 +43,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to update patient' }, { status: 500 })
     }
 
-    // Send Twilio SMS (only if credentials exist)
-    const twilioSid = process.env.TWILIO_ACCOUNT_SID
-    const twilioToken = process.env.TWILIO_AUTH_TOKEN
-    const twilioFrom = process.env.TWILIO_PHONE_NUMBER
+    // Send SMS via configured provider
+    const formList = forms
+      .map((f: string) => f.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()))
+      .join(', ')
+    const smsBody = `Hi ${patient.name}, please complete your ER intake forms (${formList}) here: ${formUrl}`
 
-    if (twilioSid && twilioToken && twilioFrom && patient.phone) {
-      const twilio = (await import('twilio')).default
-      const client = twilio(twilioSid, twilioToken)
+    if (SMS_PROVIDER === 'telnyx') {
+      const telnyxApiKey = process.env.TELNYX_API_KEY
+      const telnyxFrom = process.env.TELNYX_PHONE_NUMBER
 
-      const formList = forms
-        .map((f: string) => f.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()))
-        .join(', ')
+      if (telnyxApiKey && telnyxFrom && patient.phone) {
+        const Telnyx = (await import('telnyx')).default
+        const client = new Telnyx(telnyxApiKey)
+        const digits = patient.phone.replace(/\D/g, '')
+        const toNumber = digits.startsWith('1') ? `+${digits}` : `+1${digits}`
+        await client.messages.send({
+          from: telnyxFrom,
+          to: toNumber,
+          text: smsBody,
+        })
+      }
+    } else {
+      const twilioSid = process.env.TWILIO_ACCOUNT_SID
+      const twilioToken = process.env.TWILIO_AUTH_TOKEN
+      const twilioFrom = process.env.TWILIO_PHONE_NUMBER
 
-      await client.messages.create({
-        body: `Hi ${patient.name}, please complete your ER intake forms (${formList}) here: ${formUrl}`,
-        from: twilioFrom,
-        to: patient.phone,
-      })
+      if (twilioSid && twilioToken && twilioFrom && patient.phone) {
+        const twilio = (await import('twilio')).default
+        const client = twilio(twilioSid, twilioToken)
+        await client.messages.create({
+          body: smsBody,
+          from: twilioFrom,
+          to: patient.phone,
+        })
+      }
     }
 
     return NextResponse.json({ success: true, formUrl })

@@ -1,9 +1,18 @@
-import { PDFDocument, StandardFonts, PDFTextField, PDFCheckBox } from 'pdf-lib'
+import { PDFDocument, StandardFonts, PDFTextField, PDFCheckBox, rgb } from 'pdf-lib'
+
+export interface SignaturePlacement {
+  pageIndex: number  // 0-based
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 export async function loadAndFillPdf(
   formName: string,
   values: Record<string, string>,
-  signatureDataUrl?: string
+  signatureDataUrl?: string,
+  signaturePlacements?: SignaturePlacement[]
 ): Promise<Uint8Array | null> {
   try {
     const res = await fetch(`/forms/${formName}.pdf`)
@@ -27,21 +36,41 @@ export async function loadAndFillPdf(
       }
     }
 
-    // Embed signature image on the last page
-    if (signatureDataUrl) {
+    // Draw English checkbox mark — no AcroForm field exists for it
+    if (formName === 'registration' && values['lang_english'] === 'true') {
       try {
-        const sigImg = await pdfDoc.embedPng(signatureDataUrl)
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
         const pages = pdfDoc.getPages()
-        const lastPage = pages[pages.length - 1]
-        lastPage.drawImage(sigImg, { x: 50, y: 50, width: 200, height: 60 })
+        pages[0].drawText('X', { x: 389, y: 505, size: 7, font, color: rgb(0, 0, 0) })
       } catch {
-        // Skip if embedding fails
+        // Skip if drawing fails
       }
     }
 
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
     form.updateFieldAppearances(font)
     form.flatten()
+
+    // Draw signatures AFTER flatten so the empty AcroForm appearance doesn't overwrite them
+    if (signatureDataUrl && signaturePlacements && signaturePlacements.length > 0) {
+      try {
+        const sigImg = await pdfDoc.embedPng(signatureDataUrl)
+        const pages = pdfDoc.getPages()
+        for (const p of signaturePlacements) {
+          if (p.pageIndex < pages.length) {
+            pages[p.pageIndex].drawImage(sigImg, {
+              x: p.x,
+              y: p.y,
+              width: p.width,
+              height: p.height,
+            })
+          }
+        }
+      } catch {
+        // Skip if embedding fails
+      }
+    }
+
     return await pdfDoc.save()
   } catch {
     return null

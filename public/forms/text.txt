@@ -1,0 +1,18 @@
+Okay, so now i just want to make sure everything matches up when the actual    
+  pdf form gets filled. for @public/forms/terms.txt,                             
+  '/var/folders/wm/th2nwpyn1_v9vqsmtqzrvnxw0000gn/T/TemporaryItems/NSIRD_screen  
+  captureui_LeYUj6/Screenshot 2026-03-27 at 1.17.05 AM.png' its this one and     
+  should just get filled hy the initials IF the user accepts. if not, leave the  
+  intiatls box empty                                                             
+                                                                                 
+  '/var/folders/wm/th2nwpyn1_v9vqsmtqzrvnxw0000gn/T/TemporaryItems/NSIRD_screen  
+  captureui_GV9DS6/Screenshot 2026-03-27 at 1.17.36 AM.png'                      
+  here i the @public/forms/terms2.txt. it should fill in using the patient       
+  signature. it should also prefill the date boxes below the signatues. keep     
+  the patient signature empty if they decline.                                   
+                                                                                 
+  '/var/folders/wm/th2nwpyn1_v9vqsmtqzrvnxw0000gn/T/TemporaryItems/NSIRD_screen  
+  captureui_e4ZCtH/Screenshot 2026-03-27 at 1.18.54 AM.png'                      
+  This is the @public/forms/terms3.txt . Same, if they accept, put the patient   
+  signature in the box, the date, and leave the assistant boxes for the front    
+  desk to fill out.    

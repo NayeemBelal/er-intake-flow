@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, CheckCircle } from 'lucide-react'
 import { Patient } from '@/types/patient'
-import { FORM_FIELDS } from '@/lib/pdf-fields'
+import { FORM_FIELDS, expandRadioValues } from '@/lib/pdf-fields'
 import { loadAndFillPdf, mergePdfs } from '@/lib/pdf'
 import { PdfFormFiller } from '@/components/form/PdfFormFiller'
 
@@ -38,9 +38,15 @@ export default function AuditPage() {
 
         const forms = data.forms_to_send.length > 0 ? data.forms_to_send : ['registration']
 
-        // If the patient already submitted field values, use those directly
+        // If the patient already submitted field values, expand any radio group
+        // keys (e.g. "MARITAL STATUS": "Married") into PDF checkbox keys
+        // (e.g. "Married": "true") so PdfFormFiller renders them correctly.
         if (data.form_field_values) {
-          setFormValues(data.form_field_values)
+          const expanded: Record<string, Record<string, string>> = {}
+          for (const [formName, vals] of Object.entries(data.form_field_values)) {
+            expanded[formName] = expandRadioValues(formName, vals as Record<string, string>)
+          }
+          setFormValues(expanded)
         } else {
           // Fall back to pre-filling only from patient demographics
           const nameParts = data.name.trim().split(/\s+/)
@@ -93,7 +99,18 @@ export default function AuditPage() {
         const textValues = { ...vals }
         delete textValues['Patient Signature']
 
-        const bytes = await loadAndFillPdf(formName, textValues, signatureDataUrl)
+        if (formName === 'registration') {
+          const cf = textValues['CONTACT FIRST NAME']
+          const cl = textValues['CONTACT LAST NAME']
+          if (cf || cl) {
+            textValues['NAME OF CONTACT'] = `${cf ?? ''} ${cl ?? ''}`.trim()
+            delete textValues['CONTACT FIRST NAME']
+            delete textValues['CONTACT LAST NAME']
+          }
+        }
+
+        const expandedValues = expandRadioValues(formName, textValues)
+        const bytes = await loadAndFillPdf(formName, expandedValues, signatureDataUrl)
         if (bytes) filledPdfs.push(bytes)
       }
 

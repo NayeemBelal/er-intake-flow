@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     const dob = formData.get('dob') as string | null
     const phone = formData.get('phone') as string | null
     const reason = formData.get('reason') as string | null
+    const howDidYouHear = formData.get('how_did_you_hear') as string | null
     const idPhoto = formData.get('id_photo') as File | null
     const insurancePhoto = formData.get('insurance_photo') as File | null
 
@@ -46,6 +47,11 @@ export async function POST(request: Request) {
       ? await uploadPhoto(supabase, insurancePhoto, 'insurance')
       : null
 
+    // Pre-seed form_field_values with data captured at the intake kiosk
+    const initialFieldValues = howDidYouHear
+      ? { registration: { 'HOW DID YOU HEAR': howDidYouHear } }
+      : null
+
     const { data, error } = await supabase
       .from('patients')
       .insert({
@@ -57,6 +63,7 @@ export async function POST(request: Request) {
         insurance_photo_url: insurancePhotoUrl,
         status: 'waiting_for_forms',
         forms_to_send: [],
+        form_field_values: initialFieldValues,
       })
       .select('id, name')
       .single()
