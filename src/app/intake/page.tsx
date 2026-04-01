@@ -7,6 +7,32 @@ import BasicInfoStep, { type BasicInfoData } from '@/components/intake/BasicInfo
 import PhotoCaptureStep from '@/components/intake/PhotoCaptureStep'
 import ThankYouScreen from '@/components/intake/ThankYouScreen'
 
+const MAX_PX = 1200
+const JPEG_QUALITY = 0.82
+
+function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, MAX_PX / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(
+        blob => (blob ? resolve(blob) : reject(new Error('Canvas compression failed'))),
+        'image/jpeg',
+        JPEG_QUALITY
+      )
+    }
+    img.onerror = () => reject(new Error('Failed to load image'))
+    img.src = url
+  })
+}
+
 type Step = 'basic-info' | 'photos' | 'thank-you'
 
 export default function IntakePage() {
@@ -34,8 +60,8 @@ export default function IntakePage() {
       formData.append('phone', basicInfo.phone)
       formData.append('reason', basicInfo.reason)
       if (basicInfo.howDidYouHear) formData.append('how_did_you_hear', basicInfo.howDidYouHear)
-      if (idPhoto) formData.append('id_photo', idPhoto)
-      if (insurancePhoto) formData.append('insurance_photo', insurancePhoto)
+      if (idPhoto) formData.append('id_photo', await compressImage(idPhoto), 'id_photo.jpg')
+      if (insurancePhoto) formData.append('insurance_photo', await compressImage(insurancePhoto), 'insurance_photo.jpg')
 
       const res = await fetch('/api/patients', { method: 'POST', body: formData })
 
